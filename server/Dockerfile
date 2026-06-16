@@ -1,10 +1,10 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-COPY server/package.json server/package-lock.json* ./
+COPY package.json package-lock.json* ./
 RUN npm install
 
-COPY server/ ./
+COPY . ./
 RUN npm run build
 
 FROM node:18-alpine AS runner
