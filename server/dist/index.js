@@ -19,7 +19,7 @@ app.use(rateLimit({
     legacyHeaders: false,
 }));
 app.use(cors({
-    origin: CORS_ORIGIN,
+    origin: true,
     credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
