@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ams
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ams" --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install frontend deps
+        run: |
+          npm ci
+
+      - name: Build frontend
+        run: |
+          npm run build
+
+      - name: Install backend deps
+        run: |
+          cd server && npm install
+
+      - name: Run backend migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/ams
+        run: |
+          cd server && npm run migrate
+
+      - name: Run backend seed
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/ams
+        run: |
+          cd server && npm run seed
+
+      - name: Run backend build
+        run: |
+          cd server && npm run build
