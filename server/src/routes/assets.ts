@@ -260,8 +260,8 @@ router.delete('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
 router.get('/qr/:deskNumber', async (req: AuthRequest, res: Response) => {
   try {
     const { deskNumber } = req.params;
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-   const qrData = `https://google.com`;
+const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+const qrData = `${baseUrl}/search?desk=${deskNumber}`;
     
     const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
   width: 500,
