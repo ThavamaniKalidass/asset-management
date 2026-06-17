@@ -413,14 +413,22 @@ export default function QRManagementPage() {
                     exit={{ opacity: 0, scale: 0.9 }}
                     className="flex flex-col items-center gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-200"
                   >
-                    <div className="bg-white p-4 rounded-2xl shadow-card border border-slate-100">
-                      <canvas
-                        ref={qrCanvasRef}
-                        width={256}
-                        height={256}
-                        className="w-64 h-64"
-                      />
-                    </div>
+                   <div className="bg-white p-4 rounded-2xl shadow-card border border-slate-100">
+  {qrDataUrl ? (
+    <img
+      src={qrDataUrl}
+      alt="QR Code"
+      className="w-64 h-64"
+    />
+  ) : (
+    <canvas
+      ref={qrCanvasRef}
+      width={256}
+      height={256}
+      className="w-64 h-64"
+    />
+  )}
+</div>
                     <p className="text-sm font-medium text-slate-600">
                       Desk: <span className="text-primary-700 font-semibold">{generatedDesk}</span>
                     </p>
