@@ -261,7 +261,7 @@ router.get('/qr/:deskNumber', async (req: AuthRequest, res: Response) => {
   try {
     const { deskNumber } = req.params;
 const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-const qrData = `${baseUrl}/search?desk=${deskNumber}`;
+const qrData = `${baseUrl}/desk/${deskNumber}`;
     
     const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
   width: 500,

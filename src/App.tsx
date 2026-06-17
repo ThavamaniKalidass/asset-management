@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import AppLayout from '@/components/AppLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import DeskDetailsPage from "./pages/DeskDetailsPage";
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
@@ -30,7 +31,7 @@ export default function App() {
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
-
+ <Route path="/desk/:deskNumber" element={<DeskDetailsPage />} />
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
               {/* All protected pages wrapped in AppLayout */}
@@ -40,6 +41,7 @@ export default function App() {
                 <Route path="/qr-management" element={<QRManagementPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
+               
               </Route>
             </Route>
 
