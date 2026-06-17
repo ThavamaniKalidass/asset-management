@@ -5,6 +5,32 @@ import { query } from '../config/db.js';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
+router.get('/desk/:deskNumber', async (req, res) => {
+  try {
+    const { deskNumber } = req.params;
+
+    const result = await query(
+      `SELECT *
+       FROM assets
+       WHERE desk_number = $1
+       ORDER BY asset_type`,
+      [deskNumber]
+    );
+
+    res.json({
+      success: true,
+      deskNumber,
+      assets: result.rows
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch desk assets'
+    });
+  }
+});
 
 // All asset routes require authentication
 router.use(authenticateToken);
@@ -291,30 +317,5 @@ const qrData = `${baseUrl}/desk/${deskNumber}`;
   }
 });
 // GET /api/assets/desk/:deskNumber
-router.get('/desk/:deskNumber', async (req, res) => {
-  try {
-    const { deskNumber } = req.params;
 
-    const result = await query(
-      `SELECT *
-       FROM assets
-       WHERE desk_number = $1
-       ORDER BY asset_type`,
-      [deskNumber]
-    );
-
-    res.json({
-      success: true,
-      deskNumber,
-      assets: result.rows
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch desk assets'
-    });
-  }
-});
 export default router;
