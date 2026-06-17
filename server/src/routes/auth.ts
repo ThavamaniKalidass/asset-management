@@ -1,61 +1,61 @@
-import { Router, Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import { query } from '../config/db.js';
-import { generateToken, authenticateToken, AuthRequest } from '../middleware/auth.js';
+  import { Router, Request, Response } from 'express';
+  import bcrypt from 'bcryptjs';
+  import { query } from '../config/db.js';
+  import { generateToken, authenticateToken, AuthRequest } from '../middleware/auth.js';
 
-const router = Router();
+  const router = Router();
 
-// POST /api/auth/login
-router.post('/login', async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
+  // POST /api/auth/login
+  router.post('/login', async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required.' });
+      }
+
+      const result = await query('SELECT id, email, password_hash, name, role FROM users WHERE email = $1', [email]);
+      const user = result.rows[0];
+
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid credentials.' });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+      if (!validPassword) {
+        return res.status(401).json({ error: 'Invalid credentials.' });
+      }
+
+      const token = generateToken({ id: user.id, email: user.email, role: user.role });
+
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+      });
+    } catch (err: any) {
+      console.error('Login error:', err);
+      res.status(500).json({ error: 'Internal server error.' });
     }
+  });
 
-    const result = await query('SELECT id, email, password_hash, name, role FROM users WHERE email = $1', [email]);
-    const user = result.rows[0];
-
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials.' });
+  // GET /api/auth/me
+  router.get('/me', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const result = await query('SELECT id, email, name, role, created_at FROM users WHERE id = $1', [req.user!.id]);
+      const user = result.rows[0];
+      if (!user) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+      res.json(user);
+    } catch (err: any) {
+      console.error('Get user error:', err);
+      res.status(500).json({ error: 'Internal server error.' });
     }
+  });
 
-    const validPassword = await bcrypt.compare(password, user.password_hash);
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials.' });
-    }
-
-    const token = generateToken({ id: user.id, email: user.email, role: user.role });
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-    });
-  } catch (err: any) {
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-});
-
-// GET /api/auth/me
-router.get('/me', authenticateToken, async (req: AuthRequest, res: Response) => {
-  try {
-    const result = await query('SELECT id, email, name, role, created_at FROM users WHERE id = $1', [req.user!.id]);
-    const user = result.rows[0];
-    if (!user) {
-      return res.status(404).json({ error: 'User not found.' });
-    }
-    res.json(user);
-  } catch (err: any) {
-    console.error('Get user error:', err);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-});
-
-export default router;
+  export default router;
