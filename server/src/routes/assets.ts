@@ -264,13 +264,13 @@ router.get('/qr/:deskNumber', async (req: AuthRequest, res: Response) => {
     const qrData = `${baseUrl}/search?desk=${deskNumber}`;
     
     const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
-      width: 400,
-      margin: 2,
-      color: {
-        dark: '#1e293b',
-        light: '#ffffff',
-      },
-    });
+  width: 500,
+  margin: 8,
+  color: {
+    dark: '#000000',
+    light: '#FFFFFF',
+  },
+});
 
     // Get assets for this desk
     const assetsResult = await query(
