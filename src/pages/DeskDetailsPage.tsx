@@ -115,6 +115,8 @@ const [editForm, setEditForm] = useState({
 const handleUpdate = async () => {
   if (!selectedAsset) return;
 
+  const token = localStorage.getItem("token");
+
   try {
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/api/assets/${selectedAsset.id}`,
@@ -122,11 +124,11 @@ const handleUpdate = async () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(editForm),
       }
     );
-
     if (response.ok) {
       alert("Asset updated successfully");
       setSelectedAsset(null);
