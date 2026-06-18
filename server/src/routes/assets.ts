@@ -241,7 +241,10 @@ router.post('/bulk', requireAdmin, async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/assets/:id (admin only)
+
 router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
+ console.log("PARAM ID:", req.params.id);
+console.log("BODY:", req.body);
   console.log("USER:", req.user);
 
   try {
