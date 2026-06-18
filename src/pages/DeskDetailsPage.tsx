@@ -112,20 +112,21 @@ const [editForm, setEditForm] = useState({
         ),
     };
   };
+ const token = localStorage.getItem("ams_token");
+console.log(token);
 const handleUpdate = async () => {
   if (!selectedAsset) return;
-
-  const token = localStorage.getItem("token");
+const token = localStorage.getItem("ams_token");
 
   try {
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/api/assets/${selectedAsset.id}`,
       {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
+     headers: {
+  "Content-Type": "application/json",
+  "Authorization": `Bearer ${token}`,
+},
         body: JSON.stringify(editForm),
       }
     );
