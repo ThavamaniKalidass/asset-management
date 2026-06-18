@@ -51,7 +51,14 @@ export default function DeskDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [lastUpdated, setLastUpdated] = useState<string>("");
-  const [selectedAsset, setSelectedAsset] = useState<any>(null);
+const [selectedAsset, setSelectedAsset] = useState<any>(null);
+const [editForm, setEditForm] = useState({
+  asset_type: "",
+  brand: "",
+  model_number: "",
+  serial_number: "",
+  desk_number: "",
+});
 
   useEffect(() => {
     const fetchAssets = async () => {
@@ -105,7 +112,33 @@ export default function DeskDetailsPage() {
         ),
     };
   };
+const handleUpdate = async () => {
+  if (!selectedAsset) return;
 
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/assets/${selectedAsset.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editForm),
+      }
+    );
+
+    if (response.ok) {
+      alert("Asset updated successfully");
+      setSelectedAsset(null);
+      window.location.reload();
+    } else {
+      alert("Update failed");
+    }
+  } catch (error) {
+    console.error(error);
+    alert("Error updating asset");
+  }
+};
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -319,7 +352,16 @@ export default function DeskDetailsPage() {
                     <motion.button
   whileHover={{ scale: 1.05 }}
   whileTap={{ scale: 0.95 }}
-  onClick={() => setSelectedAsset(asset)}
+  onClick={() => {
+  setSelectedAsset(asset);
+setEditForm({
+  asset_type: asset.asset_type,
+  brand: asset.brand,
+  model_number: asset.model_number,
+  serial_number: asset.serial_number,
+  desk_number: asset.desk_number,
+});
+}}
   className="btn-primary w-full mt-4 flex items-center justify-center gap-2 group/btn"
 >
   <Edit2 className="w-4 h-4 group-hover/btn:rotate-12 transition-transform" />
@@ -355,30 +397,59 @@ export default function DeskDetailsPage() {
         )}
         
       </div>
-      {selectedAsset && (
+  {selectedAsset && (
   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div className="bg-white p-6 rounded-xl w-96">
-      <h2 className="text-xl font-bold mb-4">
-        Edit Asset
-      </h2>
+      <h2 className="text-xl font-bold mb-4">Edit Asset</h2>
 
       <input
         className="border p-2 w-full mb-3"
-        value={selectedAsset.brand}
+        placeholder="Brand"
+        value={editForm.brand}
         onChange={(e) =>
-          setSelectedAsset({
-            ...selectedAsset,
-            brand: e.target.value,
+          setEditForm({ ...editForm, brand: e.target.value })
+        }
+      />
+
+      <input
+        className="border p-2 w-full mb-3"
+        placeholder="Model Number"
+        value={editForm.model_number}
+        onChange={(e) =>
+          setEditForm({
+            ...editForm,
+            model_number: e.target.value,
           })
         }
       />
 
-      <button
-        onClick={() => setSelectedAsset(null)}
-        className="bg-red-500 text-white px-4 py-2 rounded"
-      >
-        Close
-      </button>
+      <input
+        className="border p-2 w-full mb-3"
+        placeholder="Serial Number"
+        value={editForm.serial_number}
+        onChange={(e) =>
+          setEditForm({
+            ...editForm,
+            serial_number: e.target.value,
+          })
+        }
+      />
+
+      <div className="flex gap-2">
+        <button
+          className="bg-green-600 text-white px-4 py-2 rounded"
+          onClick={handleUpdate}
+        >
+          Save
+        </button>
+
+        <button
+          className="bg-gray-500 text-white px-4 py-2 rounded"
+          onClick={() => setSelectedAsset(null)}
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   </div>
 )}
