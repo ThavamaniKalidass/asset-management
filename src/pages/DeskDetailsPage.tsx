@@ -112,8 +112,7 @@ const [editForm, setEditForm] = useState({
         ),
     };
   };
- const token = localStorage.getItem("ams_token");
-console.log(token);
+
 const handleUpdate = async () => {
   if (!selectedAsset) return;
 const token = localStorage.getItem("ams_token");
