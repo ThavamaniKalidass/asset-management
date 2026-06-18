@@ -242,6 +242,8 @@ router.post('/bulk', requireAdmin, async (req: AuthRequest, res: Response) => {
 
 // PUT /api/assets/:id (admin only)
 router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
+  console.log("USER:", req.user);
+
   try {
     const { asset_type, brand, model_number, serial_number, desk_number } = req.body;
 
