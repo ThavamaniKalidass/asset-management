@@ -248,6 +248,8 @@ console.log("BODY:", req.body);
   console.log("USER:", req.user);
 
   try {
+    console.log("BEFORE UPDATE");
+
     const { asset_type, brand, model_number, serial_number, desk_number } = req.body;
 
     if (!asset_type || !brand || !model_number || !serial_number || !desk_number) {
@@ -261,16 +263,20 @@ console.log("BODY:", req.body);
        RETURNING id, asset_type, brand, model_number, serial_number, desk_number, created_at, updated_at`,
       [asset_type, brand, model_number, serial_number, desk_number, req.params.id]
     );
-
+console.log("RESULT:", result.rows);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Asset not found.' });
     }
 
     res.json(result.rows[0]);
   } catch (err: any) {
-    console.error('Update asset error:', err);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
+  console.error("UPDATE ERROR:", err);
+
+  res.status(500).json({
+    error: err.message,
+    stack: err.stack
+  });
+}
 });
 
 // DELETE /api/assets/:id (admin only)

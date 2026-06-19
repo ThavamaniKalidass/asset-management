@@ -3,6 +3,27 @@ import QRCode from 'qrcode';
 import { query } from '../config/db.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 const router = Router();
+router.get('/desk/:deskNumber', async (req, res) => {
+    try {
+        const { deskNumber } = req.params;
+        const result = await query(`SELECT *
+       FROM assets
+       WHERE desk_number = $1
+       ORDER BY asset_type`, [deskNumber]);
+        res.json({
+            success: true,
+            deskNumber,
+            assets: result.rows
+        });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch desk assets'
+        });
+    }
+});
 // All asset routes require authentication
 router.use(authenticateToken);
 // GET /api/assets
@@ -187,7 +208,11 @@ router.post('/bulk', requireAdmin, async (req, res) => {
 });
 // PUT /api/assets/:id (admin only)
 router.put('/:id', requireAdmin, async (req, res) => {
+    console.log("PARAM ID:", req.params.id);
+    console.log("BODY:", req.body);
+    console.log("USER:", req.user);
     try {
+        console.log("BEFORE UPDATE");
         const { asset_type, brand, model_number, serial_number, desk_number } = req.body;
         if (!asset_type || !brand || !model_number || !serial_number || !desk_number) {
             return res.status(400).json({ error: 'All fields are required.' });
@@ -196,14 +221,18 @@ router.put('/:id', requireAdmin, async (req, res) => {
        SET asset_type = $1, brand = $2, model_number = $3, serial_number = $4, desk_number = $5, updated_at = NOW()
        WHERE id = $6
        RETURNING id, asset_type, brand, model_number, serial_number, desk_number, created_at, updated_at`, [asset_type, brand, model_number, serial_number, desk_number, req.params.id]);
+        console.log("RESULT:", result.rows);
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Asset not found.' });
         }
         res.json(result.rows[0]);
     }
     catch (err) {
-        console.error('Update asset error:', err);
-        res.status(500).json({ error: 'Internal server error.' });
+        console.error("UPDATE ERROR:", err);
+        res.status(500).json({
+            error: err.message,
+            stack: err.stack
+        });
     }
 });
 // DELETE /api/assets/:id (admin only)
@@ -225,13 +254,13 @@ router.get('/qr/:deskNumber', async (req, res) => {
     try {
         const { deskNumber } = req.params;
         const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const qrData = `${baseUrl}/search?desk=${deskNumber}`;
+        const qrData = `${baseUrl}/desk/${deskNumber}`;
         const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
-            width: 400,
-            margin: 2,
+            width: 500,
+            margin: 8,
             color: {
-                dark: '#1e293b',
-                light: '#ffffff',
+                dark: '#000000',
+                light: '#FFFFFF',
             },
         });
         // Get assets for this desk
@@ -249,5 +278,6 @@ router.get('/qr/:deskNumber', async (req, res) => {
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
+// GET /api/assets/desk/:deskNumber
 export default router;
 //# sourceMappingURL=assets.js.map
