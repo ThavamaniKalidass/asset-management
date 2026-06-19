@@ -5,7 +5,10 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
 }
 export function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1];
+    console.log("AUTH HEADER:", authHeader);
+    console.log("TOKEN:", token);
+    console.log("JWT_SECRET:", JWT_SECRET);
     if (!token) {
         return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
@@ -15,7 +18,10 @@ export function authenticateToken(req, res, next) {
         next();
     }
     catch (err) {
-        return res.status(403).json({ error: 'Invalid or expired token.' });
+        console.error("JWT VERIFY ERROR:", err);
+        return res.status(403).json({
+            error: 'Invalid or expired token.'
+        });
     }
 }
 export function requireAdmin(req, res, next) {
