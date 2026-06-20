@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   Monitor,
   Cpu,
@@ -189,6 +190,7 @@ const chartColors: Record<string, string> = {
 
 // ---------- Main Dashboard Component ----------
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentAssets, setRecentAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -259,24 +261,37 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick action buttons */}
-      <div className="flex flex-wrap gap-3">
-        <button className="btn-primary flex items-center gap-2 text-sm">
-          <Plus className="w-4 h-4" />
-          Add Asset
-        </button>
-        <button className="btn-secondary flex items-center gap-2 text-sm">
-          <QrCode className="w-4 h-4" />
-          Scan QR
-        </button>
-        <button className="btn-secondary flex items-center gap-2 text-sm">
-          <FileText className="w-4 h-4" />
-          Generate Report
-        </button>
-        <button className="btn-secondary flex items-center gap-2 text-sm">
-          <Download className="w-4 h-4" />
-          Export Data
-        </button>
-      </div>
+      <button
+  onClick={() => navigate('/asset-master')}
+  className="btn-primary flex items-center gap-2 text-sm"
+>
+  <Plus className="w-4 h-4" />
+  Add Asset
+</button>
+
+<button
+  onClick={() => navigate('/qr-management')}
+  className="btn-secondary flex items-center gap-2 text-sm"
+>
+  <QrCode className="w-4 h-4" />
+  Scan QR
+</button>
+
+<button
+  onClick={() => navigate('/reports')}
+  className="btn-secondary flex items-center gap-2 text-sm"
+>
+  <FileText className="w-4 h-4" />
+  Generate Report
+</button>
+
+<button
+  onClick={() => navigate('/reports')}
+  className="btn-secondary flex items-center gap-2 text-sm"
+>
+  <Download className="w-4 h-4" />
+  Export Data
+</button>
 
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
