@@ -153,6 +153,8 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
 
     const worksheet = workbook.Sheets[sheetName];
     const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: '' });
+    const totalRows = rawRows.length;
+    console.log(`Import file received: ${req.file.originalname}, total rows: ${totalRows}`);
 
     const rows: Array<{
       asset_type: string;
@@ -190,6 +192,7 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
 
       if (missingFields.length > 0) {
         errors.push(`Row ${rowNumber}: Missing ${missingFields.join(', ')}`);
+        console.log(`Import error at row ${rowNumber}: missing ${missingFields.join(', ')}`, rawRow);
         return;
       }
 
@@ -203,9 +206,12 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
     });
 
     if (rows.length === 0) {
+      console.log('Import completed with no valid rows. Errors:', errors, 'Duplicates:', duplicates);
       return res.status(400).json({
+        totalRows,
         imported: 0,
         processed: 0,
+        skipped: errors.length + duplicates.length,
         errors,
         duplicates,
         message: 'No valid rows found in the uploaded file.',
@@ -244,9 +250,12 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
         params
       );
       insertedCount = insertResult.rows.length;
+      console.log(`Import inserted ${insertedCount} new assets.`);
     }
 
+    console.log(`Import summary: totalRows=${totalRows}, processed=${rows.length}, skipped=${errors.length + duplicates.length}, duplicates=${duplicates.length}, errors=${errors.length}`);
     res.json({
+      totalRows,
       imported: insertedCount,
       processed: rows.length,
       skipped: rows.length - insertRows.length + errors.length + duplicates.length,

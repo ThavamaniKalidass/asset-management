@@ -31,7 +31,7 @@ async function request<T = any>(
       localStorage.removeItem('ams_auth');
       window.location.href = '/login';
     }
-    throw new Error(error.error || `HTTP ${response.status}`);
+    throw new Error(error.error || error.message || JSON.stringify(error) || `HTTP ${response.status}`);
   }
 
   return response.json();
@@ -113,18 +113,14 @@ export const assetsApi = {
       body: JSON.stringify({ assets }),
     }),
   importExcel: (file: File) => {
-    const token = getToken();
-    console.log('Import token:', token);
-
     const formData = new FormData();
     formData.append('file', file);
 
-    return request<{ imported: number; processed: number; skipped: number; errors: string[]; duplicates: string[] }>(
+    return request<{ totalRows: number; imported: number; processed: number; skipped: number; errors: string[]; duplicates: string[] }>(
       '/api/assets/import',
       {
         method: 'POST',
         body: formData,
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       }
     );
   },

@@ -8,6 +8,7 @@ interface ImportExportProps {
 }
 
 export interface ImportSummary {
+  totalRows: number;
   imported: number;
   processed: number;
   skipped: number;
@@ -52,9 +53,6 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
     try {
       setLoading(true);
       setProgress(10);
-      const formData = new FormData();
-      formData.append('file', file);
-      setProgress(35);
       const result = await assetsApi.importExcel(file);
       setProgress(100);
       setSummary(result);
@@ -146,7 +144,11 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
             <CheckCircle className="w-4 h-4 text-emerald-500" />
             <span>Import summary</span>
           </div>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-4">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Total rows</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">{summary.totalRows}</p>
+            </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-slate-500">Imported</p>
               <p className="mt-1 text-base font-semibold text-slate-900">{summary.imported}</p>
