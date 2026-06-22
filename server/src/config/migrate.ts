@@ -28,13 +28,14 @@ async function migrate() {
       model_number VARCHAR(255) NOT NULL,
       serial_number VARCHAR(255) NOT NULL,
       desk_number VARCHAR(50) NOT NULL,
+      status VARCHAR(50) NOT NULL DEFAULT 'Active',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
 
   // Create indexes
-  await query(`CREATE INDEX IF NOT EXISTS idx_assets_serial_number ON assets(serial_number);`);
+  await query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_assets_serial_number ON assets(serial_number);`);
   await query(`CREATE INDEX IF NOT EXISTS idx_assets_desk_number ON assets(desk_number);`);
   await query(`CREATE INDEX IF NOT EXISTS idx_assets_asset_type ON assets(asset_type);`);
   await query(`CREATE INDEX IF NOT EXISTS idx_assets_brand ON assets(brand);`);

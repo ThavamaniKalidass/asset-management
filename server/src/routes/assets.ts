@@ -1,8 +1,18 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
+import path from 'path';
+import XLSX from 'xlsx';
 import QRCode from 'qrcode';
 import { query } from '../config/db.js';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth.js';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 15 * 1024 * 1024,
+  },
+});
 
 const router = Router();
 router.get('/desk/:deskNumber', async (req, res) => {
@@ -34,6 +44,220 @@ router.get('/desk/:deskNumber', async (req, res) => {
 
 // All asset routes require authentication
 router.use(authenticateToken);
+
+const TEMPLATE_HEADERS = [
+  'Asset Type',
+  'Brand',
+  'Model Number',
+  'Serial Number',
+  'Desk Number',
+  'Status',
+];
+
+function normalizeRow(row: Record<string, any>) {
+  const getValue = (keys: string[]) => {
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(row, key)) {
+        const value = row[key];
+        if (value !== null && value !== undefined) {
+          return String(value).trim();
+        }
+      }
+    }
+    return '';
+  };
+
+  return {
+    asset_type: getValue(['Asset Type', 'asset_type', 'asset type', 'type', 'Type']),
+    brand: getValue(['Brand', 'brand']),
+    model_number: getValue(['Model Number', 'model_number', 'model', 'Model']),
+    serial_number: getValue(['Serial Number', 'serial_number', 'serial', 'Serial']),
+    desk_number: getValue(['Desk Number', 'desk_number', 'desk', 'Desk']),
+    status: getValue(['Status', 'status']),
+  };
+}
+
+function formatFileName(prefix: string) {
+  const date = new Date().toISOString().slice(0, 10);
+  return `${prefix}_${date}.xlsx`;
+}
+
+// GET /api/assets/export
+router.get('/export', requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT asset_type, brand, model_number, serial_number, desk_number, status, created_at
+       FROM assets
+       ORDER BY created_at DESC`
+    );
+
+    const rows = result.rows.map((asset: any) => ({
+      'Asset Type': asset.asset_type,
+      Brand: asset.brand,
+      'Model Number': asset.model_number,
+      'Serial Number': asset.serial_number,
+      'Desk Number': asset.desk_number,
+      Status: asset.status || 'Active',
+      'Created Date': asset.created_at ? new Date(asset.created_at).toISOString().slice(0, 10) : '',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows, { header: TEMPLATE_HEADERS.concat(['Created Date']) });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Assets');
+    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+
+    const filename = formatFileName('Asset_Report');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err: any) {
+    console.error('Export assets error:', err);
+    res.status(500).json({ error: 'Failed to generate export file.' });
+  }
+});
+
+// GET /api/assets/template
+router.get('/template', requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const worksheet = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
+    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename="Asset_Import_Template.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err: any) {
+    console.error('Download template error:', err);
+    res.status(500).json({ error: 'Failed to generate template file.' });
+  }
+});
+
+// POST /api/assets/import (admin only)
+router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'Excel file is required.' });
+    }
+
+    const extension = path.extname(req.file.originalname).toLowerCase();
+    if (!['.xlsx', '.xls'].includes(extension)) {
+      return res.status(415).json({ error: 'Unsupported file type. Upload .xls or .xlsx files only.' });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      return res.status(400).json({ error: 'The Excel workbook does not contain any sheets.' });
+    }
+
+    const worksheet = workbook.Sheets[sheetName];
+    const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: '' });
+
+    const rows: Array<{
+      asset_type: string;
+      brand: string;
+      model_number: string;
+      serial_number: string;
+      desk_number: string;
+      status: string;
+      rowIndex: number;
+    }> = [];
+
+    const errors: string[] = [];
+    const duplicates: string[] = [];
+    const seenSerials = new Set<string>();
+
+    rawRows.forEach((rawRow, index) => {
+      const rowNumber = index + 2;
+      const normalized = normalizeRow(rawRow);
+      const isEmpty =
+        !normalized.asset_type &&
+        !normalized.brand &&
+        !normalized.model_number &&
+        !normalized.serial_number &&
+        !normalized.desk_number &&
+        !normalized.status;
+
+      if (isEmpty) {
+        return;
+      }
+
+      const missingFields = [];
+      if (!normalized.asset_type) missingFields.push('Asset Type');
+      if (!normalized.serial_number) missingFields.push('Serial Number');
+      if (!normalized.desk_number) missingFields.push('Desk Number');
+
+      if (missingFields.length > 0) {
+        errors.push(`Row ${rowNumber}: Missing ${missingFields.join(', ')}`);
+        return;
+      }
+
+      if (seenSerials.has(normalized.serial_number)) {
+        duplicates.push(`Row ${rowNumber}: Duplicate serial number ${normalized.serial_number}`);
+        return;
+      }
+
+      seenSerials.add(normalized.serial_number);
+      rows.push({ ...normalized, status: normalized.status || 'Active', rowIndex: rowNumber });
+    });
+
+    if (rows.length === 0) {
+      return res.status(400).json({
+        imported: 0,
+        processed: 0,
+        errors,
+        duplicates,
+        message: 'No valid rows found in the uploaded file.',
+      });
+    }
+
+    const serialNumbers = rows.map((row) => row.serial_number);
+    const existingResult = await query(
+      'SELECT serial_number FROM assets WHERE serial_number = ANY($1)',
+      [serialNumbers]
+    );
+
+    const existingSerials = new Set(existingResult.rows.map((row: any) => row.serial_number));
+    const insertRows = rows.filter((row) => {
+      if (existingSerials.has(row.serial_number)) {
+        duplicates.push(`Row ${row.rowIndex}: Serial number already exists (${row.serial_number})`);
+        return false;
+      }
+      return true;
+    });
+
+    let insertedCount = 0;
+    if (insertRows.length > 0) {
+      const values = insertRows
+        .map((_, index) =>
+          `($${index * 6 + 1}, $${index * 6 + 2}, $${index * 6 + 3}, $${index * 6 + 4}, $${index * 6 + 5}, $${index * 6 + 6})`
+        )
+        .join(', ');
+      const params = insertRows.flatMap((row) => [row.asset_type, row.brand, row.model_number, row.serial_number, row.desk_number, row.status]);
+
+      const insertResult = await query(
+        `INSERT INTO assets (asset_type, brand, model_number, serial_number, desk_number, status)
+         VALUES ${values}
+         ON CONFLICT (serial_number) DO NOTHING
+         RETURNING id`,
+        params
+      );
+      insertedCount = insertResult.rows.length;
+    }
+
+    res.json({
+      imported: insertedCount,
+      processed: rows.length,
+      skipped: rows.length - insertRows.length + errors.length + duplicates.length,
+      errors,
+      duplicates,
+    });
+  } catch (err: any) {
+    console.error('Import assets error:', err);
+    res.status(500).json({ error: 'Failed to import assets from Excel.' });
+  }
+});
 
 // GET /api/assets
 router.get('/', async (req: AuthRequest, res: Response) => {
@@ -184,17 +408,19 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // POST /api/assets (admin only)
 router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { asset_type, brand, model_number, serial_number, desk_number } = req.body;
+    const { asset_type, brand, model_number, serial_number, desk_number, status } = req.body;
 
     if (!asset_type || !brand || !model_number || !serial_number || !desk_number) {
-      return res.status(400).json({ error: 'All fields are required.' });
+      return res.status(400).json({ error: 'Asset Type, Brand, Model Number, Serial Number, and Desk Number are required.' });
     }
 
+    const assetStatus = status && String(status).trim() ? String(status).trim() : 'Active';
+
     const result = await query(
-      `INSERT INTO assets (asset_type, brand, model_number, serial_number, desk_number)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, asset_type, brand, model_number, serial_number, desk_number, created_at, updated_at`,
-      [asset_type, brand, model_number, serial_number, desk_number]
+      `INSERT INTO assets (asset_type, brand, model_number, serial_number, desk_number, status)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, asset_type, brand, model_number, serial_number, desk_number, status, created_at, updated_at`,
+      [asset_type, brand, model_number, serial_number, desk_number, assetStatus]
     );
 
     res.status(201).json(result.rows[0]);
@@ -217,19 +443,20 @@ router.post('/bulk', requireAdmin, async (req: AuthRequest, res: Response) => {
 
     const created: any[] = [];
     for (const asset of assets) {
-      const { asset_type, brand, model_number, serial_number, desk_number } = asset;
+      const { asset_type, brand, model_number, serial_number, desk_number, status } = asset;
       if (!asset_type || !brand || !model_number || !serial_number || !desk_number) continue;
+      const assetStatus = status && String(status).trim() ? String(status).trim() : 'Active';
 
       try {
         const result = await query(
-          `INSERT INTO assets (asset_type, brand, model_number, serial_number, desk_number)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING id, asset_type, brand, model_number, serial_number, desk_number`,
-          [asset_type, brand, model_number, serial_number, desk_number]
+          `INSERT INTO assets (asset_type, brand, model_number, serial_number, desk_number, status)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, asset_type, brand, model_number, serial_number, desk_number, status`,
+          [asset_type, brand, model_number, serial_number, desk_number, assetStatus]
         );
         created.push(result.rows[0]);
       } catch {
-        // Skip duplicates
+        // Skip duplicates or invalid rows
       }
     }
 
@@ -250,18 +477,20 @@ console.log("BODY:", req.body);
   try {
     console.log("BEFORE UPDATE");
 
-    const { asset_type, brand, model_number, serial_number, desk_number } = req.body;
+    const { asset_type, brand, model_number, serial_number, desk_number, status } = req.body;
 
     if (!asset_type || !brand || !model_number || !serial_number || !desk_number) {
-      return res.status(400).json({ error: 'All fields are required.' });
+      return res.status(400).json({ error: 'Asset Type, Brand, Model Number, Serial Number, and Desk Number are required.' });
     }
+
+    const assetStatus = status && String(status).trim() ? String(status).trim() : 'Active';
 
     const result = await query(
       `UPDATE assets 
-       SET asset_type = $1, brand = $2, model_number = $3, serial_number = $4, desk_number = $5, updated_at = NOW()
-       WHERE id = $6
-       RETURNING id, asset_type, brand, model_number, serial_number, desk_number, created_at, updated_at`,
-      [asset_type, brand, model_number, serial_number, desk_number, req.params.id]
+       SET asset_type = $1, brand = $2, model_number = $3, serial_number = $4, desk_number = $5, status = $6, updated_at = NOW()
+       WHERE id = $7
+       RETURNING id, asset_type, brand, model_number, serial_number, desk_number, status, created_at, updated_at`,
+      [asset_type, brand, model_number, serial_number, desk_number, assetStatus, req.params.id]
     );
 console.log("RESULT:", result.rows);
     if (result.rows.length === 0) {

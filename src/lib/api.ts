@@ -9,8 +9,9 @@ async function request<T = any>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = getToken();
+  const isFormData = options.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   };
 
@@ -34,6 +35,46 @@ async function request<T = any>(
   }
 
   return response.json();
+}
+
+async function requestBlob(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<Blob> {
+  const token = getToken();
+  const isFormData = options.body instanceof FormData;
+  const headers: Record<string, string> = {
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    let parsedError = error;
+    try {
+      const json = JSON.parse(error);
+      parsedError = json.error || JSON.stringify(json);
+    } catch {
+      parsedError = error || `HTTP ${response.status}`;
+    }
+    if (response.status === 401) {
+      localStorage.removeItem('ams_token');
+      localStorage.removeItem('ams_auth');
+      window.location.href = '/login';
+    }
+    throw new Error(parsedError);
+  }
+
+  return response.blob();
 }
 
 // Auth API
@@ -71,6 +112,19 @@ export const assetsApi = {
       method: 'POST',
       body: JSON.stringify({ assets }),
     }),
+  importExcel: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<{ imported: number; processed: number; skipped: number; errors: string[]; duplicates: string[] }>(
+      '/api/assets/import',
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+  },
+  downloadTemplate: () => requestBlob('/api/assets/template'),
+  exportExcel: () => requestBlob('/api/assets/export'),
   getQR: (deskNumber: string) =>
     request<any>(`/api/assets/qr/${encodeURIComponent(deskNumber)}`),
 };

@@ -243,9 +243,36 @@ export default function DashboardPage() {
       ]
     : [];
 
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+
   const totalAssets = stats
     ? Object.values(stats).reduce((sum, val) => sum + val, 0)
     : 0;
+
+  async function handleExportData() {
+    try {
+      setExportLoading(true);
+      setExportProgress(25);
+      const blob = await assetsApi.exportExcel();
+      setExportProgress(80);
+      const filename = `Asset_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setExportProgress(100);
+    } catch (err: any) {
+      console.error('Export failed:', err);
+    } finally {
+      setTimeout(() => setExportProgress(0), 300);
+      setExportLoading(false);
+    }
+  }
 
   return (
     <motion.div
@@ -286,11 +313,12 @@ export default function DashboardPage() {
 </button>
 
 <button
-  onClick={() => navigate('/reports')}
+  onClick={handleExportData}
+  disabled={exportLoading}
   className="btn-secondary flex items-center gap-2 text-sm"
 >
   <Download className="w-4 h-4" />
-  Export Data
+  {exportLoading ? 'Exporting...' : 'Export Data'}
 </button>
 
       {/* Stat Cards Grid */}

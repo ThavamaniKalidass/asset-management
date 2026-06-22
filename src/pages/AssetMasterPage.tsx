@@ -5,7 +5,6 @@ import {
   Pencil,
   Trash2,
   Search,
-  Upload,
   ChevronLeft,
   ChevronRight,
   X,
@@ -17,6 +16,7 @@ import { assetsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Asset, AssetFormData } from '@/types';
 import { ASSET_TYPES, BRANDS } from '@/types';
+import ImportExport from '@/components/ImportExport';
 
 // ---------- Types ----------
 interface ToastMessage {
@@ -72,9 +72,6 @@ export default function AssetMasterPage() {
   // Toast
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const toastCounter = useRef(0);
-
-  // File input ref
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { isAdmin } = useAuth();
 
   // --- Load assets ---
@@ -219,161 +216,11 @@ export default function AssetMasterPage() {
     }
   }
 
-  // --- Bulk Import ---
-  async function handleBulkImport(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      let parsedData: AssetFormData[] = [];
-
-      if (extension === 'csv') {
-        parsedData = await parseCSV(file);
-      } else if (extension === 'xlsx') {
-        parsedData = await parseXLSX(file);
-      } else {
-        addToast('error', 'Unsupported file format. Please upload .csv or .xlsx files.');
-        return;
-      }
-
-      if (parsedData.length === 0) {
-        addToast('error', 'No valid asset records found in the file.');
-        return;
-      }
-
-      // Validate rows
-      const validRows: AssetFormData[] = [];
-      for (const row of parsedData) {
-        if (row.asset_type && row.brand && row.model_number && row.serial_number && row.desk_number) {
-          // Ensure asset_type is valid
-          if (ASSET_TYPES.includes(row.asset_type as any)) {
-            validRows.push(row);
-          }
-        }
-      }
-
-      if (validRows.length === 0) {
-        addToast('error', 'No valid rows found. Check your file format.');
-        return;
-      }
-
-      setLoading(true);
-      await assetsApi.bulkImport(validRows);
-      addToast('success', `Successfully imported ${validRows.length} asset(s).`);
-      await fetchAssets();
-    } catch (err: any) {
-      addToast('error', err?.message || 'Bulk import failed.');
-    } finally {
-      setLoading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+  function handleImportSuccess() {
+    fetchAssets();
+    addToast('success', 'Import completed and asset list refreshed.');
   }
 
-  function parseCSV(file: File): Promise<AssetFormData[]> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const text = reader.result as string;
-        const lines = text.split(/\r?\n/).filter((line) => line.trim());
-        if (lines.length < 2) {
-          resolve([]);
-          return;
-        }
-
-        // Detect header: first row might be header
-        const firstLine = lines[0].toLowerCase();
-        const hasHeader =
-          firstLine.includes('asset_type') ||
-          firstLine.includes('asset type') ||
-          firstLine.includes('brand');
-
-        const dataLines = hasHeader ? lines.slice(1) : lines;
-        const rows: AssetFormData[] = [];
-
-        for (const line of dataLines) {
-          // Handle quoted fields
-          const fields = parseCSVLine(line);
-          if (fields.length >= 5) {
-            rows.push({
-              asset_type: fields[0]?.trim() || '',
-              brand: fields[1]?.trim() || '',
-              model_number: fields[2]?.trim() || '',
-              serial_number: fields[3]?.trim() || '',
-              desk_number: fields[4]?.trim() || '',
-            });
-          }
-        }
-
-        resolve(rows);
-      };
-      reader.onerror = () => reject(new Error('Failed to read file.'));
-      reader.readAsText(file);
-    });
-  }
-
-  // Simple CSV line parser that respects quoted fields
-  function parseCSVLine(line: string): string[] {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    result.push(current);
-    return result;
-  }
-
-  async function parseXLSX(file: File): Promise<AssetFormData[]> {
-    // Dynamically import xlsx (sheets) library
-    // The library is already available in the project
-    const XLSX = await import('xlsx');
-    const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array' });
-    const sheetName = workbook.SheetNames[0];
-    if (!sheetName) return [];
-    const worksheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: '' });
-
-    const rows: AssetFormData[] = [];
-    for (const row of jsonData) {
-      // Try to find columns by common header names (case-insensitive)
-      const assetType =
-        row['asset_type'] || row['Asset Type'] || row['AssetType'] || row['type'] || row['Type'] || '';
-      const brand = row['brand'] || row['Brand'] || '';
-      const modelNumber =
-        row['model_number'] || row['Model Number'] || row['ModelNumber'] || row['model'] || row['Model'] || '';
-      const serialNumber =
-        row['serial_number'] || row['Serial Number'] || row['SerialNumber'] || row['serial'] || row['Serial'] || '';
-      const deskNumber =
-        row['desk_number'] || row['Desk Number'] || row['DeskNumber'] || row['desk'] || row['Desk'] || '';
-
-      if (assetType || brand || modelNumber || serialNumber || deskNumber) {
-        rows.push({
-          asset_type: String(assetType).trim(),
-          brand: String(brand).trim(),
-          model_number: String(modelNumber).trim(),
-          serial_number: String(serialNumber).trim(),
-          desk_number: String(deskNumber).trim(),
-        });
-      }
-    }
-
-    return rows;
-  }
-
-  // --- Render ---
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -388,24 +235,7 @@ export default function AssetMasterPage() {
           <p className="text-caption mt-1">Manage all IT assets across desks</p>
         </div>
         <div className="flex gap-3">
-          {/* Bulk Import */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.xlsx"
-            onChange={handleBulkImport}
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={() => isAdmin && fileInputRef.current?.click()}
-            disabled={!isAdmin}
-            className={`btn-secondary flex items-center gap-2 text-sm ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={!isAdmin ? 'Admin only' : 'Bulk import assets'}
-          >
-            <Upload className="w-4 h-4" />
-            Bulk Import
-          </button>
+            <ImportExport onImportSuccess={handleImportSuccess} disabled={!isAdmin} />
           <button
             type="button"
             onClick={isAdmin ? openAddForm : undefined}

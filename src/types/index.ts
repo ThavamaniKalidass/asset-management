@@ -5,6 +5,7 @@ export interface Asset {
   model_number: string;
   serial_number: string;
   desk_number: string;
+  status?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -15,6 +16,7 @@ export interface AssetFormData {
   model_number: string;
   serial_number: string;
   desk_number: string;
+  status?: string;
 }
 
 export interface User {
