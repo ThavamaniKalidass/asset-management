@@ -34,6 +34,8 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
   const [progress, setProgress] = useState(0);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showAllErrors, setShowAllErrors] = useState(false);
+  const [showAllDuplicates, setShowAllDuplicates] = useState(false);
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     setErrorMessage('');
@@ -101,7 +103,7 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || loading}
-          className={`btn-secondary flex items-center gap-2 text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`btn-secondary h-12 min-w-[160px] w-full sm:w-auto flex items-center justify-center gap-2 text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <Upload className="w-4 h-4" />
           Import Excel
@@ -110,7 +112,7 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
           type="button"
           onClick={handleDownloadTemplate}
           disabled={disabled || loading}
-          className={`btn-primary flex items-center gap-2 text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`btn-primary h-12 min-w-[160px] w-full sm:w-auto flex items-center justify-center gap-2 text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <Download className="w-4 h-4" />
           Download Template
@@ -139,47 +141,74 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
       )}
 
       {summary && (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700 shadow-sm">
-          <div className="flex items-center gap-2 text-slate-900 font-medium mb-2">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700 shadow-sm max-h-[350px] overflow-hidden">
+          <div className="flex items-center gap-2 text-slate-900 font-medium mb-3">
             <CheckCircle className="w-4 h-4 text-emerald-500" />
             <span>Import summary</span>
           </div>
           <div className="grid gap-2 sm:grid-cols-4">
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">Total rows</p>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Total rows</p>
               <p className="mt-1 text-base font-semibold text-slate-900">{summary.totalRows}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">Imported</p>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Imported</p>
               <p className="mt-1 text-base font-semibold text-slate-900">{summary.imported}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">Processed</p>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Processed</p>
               <p className="mt-1 text-base font-semibold text-slate-900">{summary.processed}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">Skipped</p>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Skipped</p>
               <p className="mt-1 text-base font-semibold text-slate-900">{summary.skipped}</p>
             </div>
           </div>
+
           {(summary.errors.length > 0 || summary.duplicates.length > 0) && (
-            <div className="mt-4 space-y-2 text-xs text-slate-600">
+            <div className="mt-4 space-y-4 overflow-hidden">
               {summary.errors.length > 0 && (
-                <div>
-                  <p className="font-medium text-slate-800">Errors</p>
-                  <ul className="list-disc list-inside">
-                    {summary.errors.map((item, index) => (
-                      <li key={`err-${index}`}>{item}</li>
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold text-slate-800">Errors</p>
+                    {summary.errors.length > 10 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllErrors((prev) => !prev)}
+                        className="text-xs text-primary-600 hover:text-primary-700"
+                      >
+                        {showAllErrors ? 'Show Less' : 'Show More'}
+                      </button>
+                    )}
+                  </div>
+                  <ul className="mt-2 max-h-[180px] overflow-y-auto text-[12px] leading-5 text-slate-600 space-y-1">
+                    {(showAllErrors ? summary.errors : summary.errors.slice(0, 10)).map((item, index) => (
+                      <li key={`err-${index}`} className="list-disc list-inside">
+                        {item}
+                      </li>
                     ))}
                   </ul>
                 </div>
               )}
               {summary.duplicates.length > 0 && (
-                <div>
-                  <p className="font-medium text-slate-800">Duplicates</p>
-                  <ul className="list-disc list-inside">
-                    {summary.duplicates.map((item, index) => (
-                      <li key={`dup-${index}`}>{item}</li>
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold text-slate-800">Duplicates</p>
+                    {summary.duplicates.length > 10 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllDuplicates((prev) => !prev)}
+                        className="text-xs text-primary-600 hover:text-primary-700"
+                      >
+                        {showAllDuplicates ? 'Show Less' : 'Show More'}
+                      </button>
+                    )}
+                  </div>
+                  <ul className="mt-2 max-h-[180px] overflow-y-auto text-[12px] leading-5 text-slate-600 space-y-1">
+                    {(showAllDuplicates ? summary.duplicates : summary.duplicates.slice(0, 10)).map((item, index) => (
+                      <li key={`dup-${index}`} className="list-disc list-inside">
+                        {item}
+                      </li>
                     ))}
                   </ul>
                 </div>

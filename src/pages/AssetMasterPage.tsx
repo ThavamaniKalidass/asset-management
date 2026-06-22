@@ -226,21 +226,24 @@ export default function AssetMasterPage() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-      className="space-y-6"
+      className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6"
     >
       {/* Page heading */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-xl">
           <h1 className="heading-1">Asset Master</h1>
-          <p className="text-caption mt-1">Manage all IT assets across desks</p>
+          <p className="text-caption mt-2">Manage all IT assets across desks</p>
         </div>
-        <div className="flex gap-3">
+
+        <div className="flex flex-col gap-3 sm:items-end md:flex-row md:items-center md:justify-end md:gap-3 w-full lg:w-auto">
+          <div className="w-full md:w-auto">
             <ImportExport onImportSuccess={handleImportSuccess} disabled={!isAdmin} />
+          </div>
           <button
             type="button"
             onClick={isAdmin ? openAddForm : undefined}
             disabled={!isAdmin}
-            className={`btn-primary flex items-center gap-2 text-sm ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`btn-primary w-full max-w-xs whitespace-nowrap flex items-center justify-center gap-2 text-sm ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
             title={!isAdmin ? 'Admin only' : 'Add asset'}
           >
             <Plus className="w-4 h-4" />
@@ -264,25 +267,25 @@ export default function AssetMasterPage() {
       {/* Asset Table */}
       <div className="card-premium overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="min-w-[720px] w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <tr className="border-b border-slate-100 bg-slate-50/80">
+                <th className="sticky top-0 z-20 px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.2em] bg-white/95 backdrop-blur-sm">
                   Asset Type
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="sticky top-0 z-20 px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.2em] bg-white/95 backdrop-blur-sm">
                   Brand
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="sticky top-0 z-20 px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.2em] bg-white/95 backdrop-blur-sm">
                   Model Number
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="sticky top-0 z-20 px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.2em] bg-white/95 backdrop-blur-sm">
                   Serial Number
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="sticky top-0 z-20 px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-[0.2em] bg-white/95 backdrop-blur-sm">
                   Desk Number
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="sticky top-0 z-20 px-4 py-3 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-[0.2em] bg-white/95 backdrop-blur-sm">
                   Actions
                 </th>
               </tr>
