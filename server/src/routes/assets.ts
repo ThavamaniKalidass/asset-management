@@ -73,7 +73,6 @@ function normalizeRow(row: Record<string, any>) {
     model_number: getValue(['Model Number', 'model_number', 'model', 'Model']),
     serial_number: getValue(['Serial Number', 'serial_number', 'serial', 'Serial']),
     desk_number: getValue(['Desk Number', 'desk_number', 'desk', 'Desk']),
-    status: getValue(['Status', 'status']),
   };
 }
 
@@ -162,7 +161,6 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
       model_number: string;
       serial_number: string;
       desk_number: string;
-      status: string;
       rowIndex: number;
     }> = [];
 
@@ -178,8 +176,7 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
         !normalized.brand &&
         !normalized.model_number &&
         !normalized.serial_number &&
-        !normalized.desk_number &&
-        !normalized.status;
+        !normalized.desk_number;
 
       if (isEmpty) {
         return;
@@ -187,6 +184,8 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
 
       const missingFields = [];
       if (!normalized.asset_type) missingFields.push('Asset Type');
+      if (!normalized.brand) missingFields.push('Brand');
+      if (!normalized.model_number) missingFields.push('Model Number');
       if (!normalized.serial_number) missingFields.push('Serial Number');
       if (!normalized.desk_number) missingFields.push('Desk Number');
 
@@ -197,21 +196,21 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
       }
 
       if (seenSerials.has(normalized.serial_number)) {
-        duplicates.push(`Row ${rowNumber}: Duplicate serial number ${normalized.serial_number}`);
+        duplicates.push(`Row ${rowNumber} skipped - Serial Number ${normalized.serial_number} already exists in the file.`);
         return;
       }
 
       seenSerials.add(normalized.serial_number);
-      rows.push({ ...normalized, status: normalized.status || 'Active', rowIndex: rowNumber });
+      rows.push({ ...normalized, rowIndex: rowNumber });
     });
 
-    if (rows.length === 0) {
+    if (rows.length === 0 && errors.length > 0) {
       console.log('Import completed with no valid rows. Errors:', errors, 'Duplicates:', duplicates);
       return res.status(400).json({
         totalRows,
         imported: 0,
-        processed: 0,
-        skipped: errors.length + duplicates.length,
+        duplicateRows: duplicates.length,
+        failedRows: errors.length,
         errors,
         duplicates,
         message: 'No valid rows found in the uploaded file.',
@@ -227,7 +226,7 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
     const existingSerials = new Set(existingResult.rows.map((row: any) => row.serial_number));
     const insertRows = rows.filter((row) => {
       if (existingSerials.has(row.serial_number)) {
-        duplicates.push(`Row ${row.rowIndex}: Serial number already exists (${row.serial_number})`);
+        duplicates.push(`Row ${row.rowIndex} skipped - Serial Number ${row.serial_number} already exists.`);
         return false;
       }
       return true;
@@ -240,7 +239,7 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
           `($${index * 6 + 1}, $${index * 6 + 2}, $${index * 6 + 3}, $${index * 6 + 4}, $${index * 6 + 5}, $${index * 6 + 6})`
         )
         .join(', ');
-      const params = insertRows.flatMap((row) => [row.asset_type, row.brand, row.model_number, row.serial_number, row.desk_number, row.status]);
+      const params = insertRows.flatMap((row) => [row.asset_type, row.brand, row.model_number, row.serial_number, row.desk_number, 'Active']);
 
       const insertResult = await query(
         `INSERT INTO assets (asset_type, brand, model_number, serial_number, desk_number, status)
@@ -253,12 +252,14 @@ router.post('/import', requireAdmin, upload.single('file'), async (req: AuthRequ
       console.log(`Import inserted ${insertedCount} new assets.`);
     }
 
-    console.log(`Import summary: totalRows=${totalRows}, processed=${rows.length}, skipped=${errors.length + duplicates.length}, duplicates=${duplicates.length}, errors=${errors.length}`);
+    const failedRows = errors.length;
+    const duplicateRows = duplicates.length;
+    console.log(`Import summary: totalRows=${totalRows}, inserted=${insertedCount}, failedRows=${failedRows}, duplicateRows=${duplicateRows}`);
     res.json({
       totalRows,
       imported: insertedCount,
-      processed: rows.length,
-      skipped: rows.length - insertRows.length + errors.length + duplicates.length,
+      duplicateRows,
+      failedRows,
       errors,
       duplicates,
     });

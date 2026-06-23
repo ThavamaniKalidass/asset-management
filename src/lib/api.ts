@@ -116,7 +116,7 @@ export const assetsApi = {
     const formData = new FormData();
     formData.append('file', file);
 
-    return request<{ totalRows: number; imported: number; processed: number; skipped: number; errors: string[]; duplicates: string[] }>(
+    return request<{ totalRows: number; imported: number; duplicateRows: number; failedRows: number; errors: string[]; duplicates: string[] }>(
       '/api/assets/import',
       {
         method: 'POST',

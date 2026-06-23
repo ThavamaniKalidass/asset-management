@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { Download, Upload, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Upload, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { assetsApi } from '@/lib/api';
 
 interface ImportExportProps {
@@ -10,22 +10,11 @@ interface ImportExportProps {
 export interface ImportSummary {
   totalRows: number;
   imported: number;
-  processed: number;
-  skipped: number;
+  duplicateRows: number;
+  failedRows: number;
   errors: string[];
   duplicates: string[];
   message?: string;
-}
-
-function saveBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
 
 export default function ImportExport({ onImportSuccess, disabled }: ImportExportProps) {
@@ -72,22 +61,6 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
     }
   }
 
-  async function handleDownloadTemplate() {
-    try {
-      setErrorMessage('');
-      setLoading(true);
-      setProgress(20);
-      const blob = await assetsApi.downloadTemplate();
-      setProgress(80);
-      saveBlob(blob, 'Asset_Import_Template.xlsx');
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Could not download template.');
-    } finally {
-      setTimeout(() => setProgress(0), 300);
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="space-y-4">
       <input
@@ -107,15 +80,6 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
         >
           <Upload className="w-4 h-4" />
           Import Excel
-        </button>
-        <button
-          type="button"
-          onClick={handleDownloadTemplate}
-          disabled={disabled || loading}
-          className={`btn-primary h-12 min-w-[160px] w-full sm:w-auto flex items-center justify-center gap-2 text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <Download className="w-4 h-4" />
-          Download Template
         </button>
       </div>
 
@@ -156,12 +120,12 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
               <p className="mt-1 text-base font-semibold text-slate-900">{summary.imported}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Processed</p>
-              <p className="mt-1 text-base font-semibold text-slate-900">{summary.processed}</p>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Duplicates</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">{summary.duplicateRows}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Skipped</p>
-              <p className="mt-1 text-base font-semibold text-slate-900">{summary.skipped}</p>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Failed</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">{summary.failedRows}</p>
             </div>
           </div>
 
