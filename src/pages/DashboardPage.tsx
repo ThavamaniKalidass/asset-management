@@ -290,19 +290,19 @@ export default function DashboardPage() {
       {/* Quick action buttons */}
       <button
   onClick={() => navigate('/assets')}
-  className="btn-primary flex items-center gap-2 text-sm"
+          className="btn-pill-primary flex items-center gap-2 text-sm"
 >
   <Plus className="w-4 h-4" />
   Add Asset
 </button>
-
-<button
-  onClick={() => navigate('/qr-management')}
-  className="btn-secondary flex items-center gap-2 text-sm"
->
-  <QrCode className="w-4 h-4" />
-  Scan QR
-</button>
+      
+        <button
+          onClick={() => navigate('/qr-management')}
+          className="btn-secondary flex items-center gap-2 text-sm"
+        >
+          <QrCode className="w-4 h-4" />
+          Scan QR
+        </button>
 
 <button
   onClick={() => navigate('/reports')}

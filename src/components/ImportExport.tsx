@@ -76,7 +76,7 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || loading}
-          className={`btn-secondary h-12 min-w-[160px] w-full sm:w-auto flex items-center justify-center gap-2 text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`import-btn h-11 min-w-[140px] w-full sm:w-auto flex items-center justify-center gap-2 text-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <Upload className="w-4 h-4" />
           Import Excel
@@ -105,7 +105,7 @@ export default function ImportExport({ onImportSuccess, disabled }: ImportExport
       )}
 
       {summary && (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700 shadow-sm max-h-[350px] overflow-hidden">
+        <div className="import-summary-card">
           <div className="flex items-center gap-2 text-slate-900 font-medium mb-3">
             <CheckCircle className="w-4 h-4 text-emerald-500" />
             <span>Import summary</span>

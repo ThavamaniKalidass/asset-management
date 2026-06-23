@@ -243,7 +243,7 @@ export default function AssetMasterPage() {
             type="button"
             onClick={isAdmin ? openAddForm : undefined}
             disabled={!isAdmin}
-            className={`btn-primary w-full max-w-xs whitespace-nowrap flex items-center justify-center gap-2 text-sm ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`btn-pill-primary w-full max-w-[320px] whitespace-nowrap flex items-center justify-center gap-2 text-sm ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
             title={!isAdmin ? 'Admin only' : 'Add asset'}
           >
             <Plus className="w-4 h-4" />
